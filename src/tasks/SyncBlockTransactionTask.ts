@@ -1,24 +1,14 @@
 import { Block } from '../interface/block';
+import { TransctionsInBlock } from '../interface/transcation_in_block';
 import { ProgressManager } from '../util/ProgressManager';
-import { getTransactionObjectStore } from '../util/IndexDBUtil'
+import { getTransactionObjectStore, getCacheBlockObjectStore, getCacheTransactionObjectStore,  getBlockObjectStore } from '../util/IndexDBUtil'
 import { Aborter } from '../util/Aborter'
 export class SyncTransactionTask {
+
     /**
-     * 区块存储空间操作对象
+     * 当前高度，指代当前下载的交易所在的区块高度
      */
-    transactionObjectStore:IDBObjectStore;
-    /**
-     * 交易缓存池
-     */
-    transactionCache: Block[] = [];
-    /**
-     * 进度管理器
-     */
-    progress: ProgressManager;
-    /**
-     * 进度标识
-     */
-    progressSymbol: Symbol = Symbol();
+    curHeight: number = 1;
     /**
      * 中断器
      */
@@ -27,46 +17,128 @@ export class SyncTransactionTask {
      * 当前执行的promise
      */
     curPromise: Promise<unknown>;
-
-    constructor() {
-        this.progress = new ProgressManager(this.progressSymbol);
-    }
-
     /**
-     * 使用Aborter进行封装区块下载
-     * @param start 开始区块高度
-     * @param end 结束区块高度
+     * 是否初始化进度
      */
-    // sync(start: number, end: number) {
-    //     return this.aborter.wrapAsyncGenerator(this._sync(start, end));
-    // }
+    inited: boolean = false;
+    
+   
 
     /**
      * 交易下载
      * @param height 对应高度的区块
      * @param numbersOfTransactions 区块交易的数量
      */
-    async sync(height: number, numbersOfTransactions: number){
-        // 设置下载的总进度
-        // this.progress.total = numbersOfTransactions
-        // 打开数据库
-        // this.curPromise = this.aborter.wrapAsync(this.findTranscByHeight(height))
-        // this.progress.buffer += 1 
-        // yield this.curPromise;
-        const transactions = await this.findTranscByHeight(height);
-        return transactions;
+    async *sync() {
+        do {
+            // 获取本地缓存的区块
+            let cacheBlocks = await this.getCacheBlocks();
+            // 1. 首先看已同步的区块的高度， 已同步的区块高度以下就不用下载了
+            // 2. 看本地已经下载的交易的高度，如果高于已同步的区块高度，再看已经下载的区块的高度，如果小于已经下载的区块的高度，继续下载，如果相等，等待
+            // 本地链上最高区块
+            let localMaxBlock = await this.getMaxBlock();
+            // 本地缓存最大交易
+            let cacheMaxTransaction = await this.getMaxCacheTransaction();
+            // 本地缓存最大区块
+            let cacheMaxBlock = await this.getMaxCacheBlock();
+            if (!this.inited) {
+                if (localMaxBlock) { // 本地链上存在区块
+                    if (cacheMaxTransaction) { // 本地已有缓存交易
+                        if (cacheMaxTransaction.height < localMaxBlock.height) {
+                            this.curHeight = localMaxBlock.height + 1;
+                        } else {
+                            if (cacheMaxBlock && cacheMaxTransaction.height <= cacheMaxBlock.height) {
+                                this.curHeight = cacheMaxTransaction.height + 1;
+                            } 
+                        }
+                    } else {
+                        this.curHeight = localMaxBlock.height;
+                    }
+                } else { // 本地链上不存在区块
+                    if (cacheMaxTransaction) { 
+                        if (cacheMaxBlock && cacheMaxTransaction.height < cacheMaxBlock.height) {
+                            this.curHeight = cacheMaxTransaction.height + 1;
+                        } 
+                    } else {
+                        this.curHeight = 1;
+                    }
+                }
+                this.inited = true;
+            }
+            
+            // 如果本地缓存的最大区块存在，并且当前交易下载高度小于最大缓存区块的高度
+            if (cacheMaxBlock && this.curHeight < cacheMaxBlock.height) {
+                // 获取当前高度所对应缓存区块的index
+                let curIndex = cacheBlocks.findIndex(block => block.height === this.curHeight)
+                // 从当前index开始遍历缓存区块
+                for (curIndex; curIndex < cacheBlocks.length; curIndex++) {
+                    console.log(`开始下载区块高度为${this.curHeight}的区块交易`)
+                    this.curPromise = this.aborter.wrapAsync(this.findTranscByHeight(cacheBlocks[curIndex].height));
+                    this.curHeight++;
+                    yield this.curPromise;
+                }
+            }            
+        } while(true)
+    }
+    /**
+     * 获取临时缓存的区块
+     */
+    async getCacheBlocks() :Promise<Block[]>{
+        let cacheBlockObjectStore = await getCacheBlockObjectStore('MiniBlockChain02');
+        return new Promise((resolve) => {
+            let request = cacheBlockObjectStore.getAll();
+            request.onsuccess = () => {
+                resolve(request.result);
+            }
+        })
     }
 
+    /**
+     * 获取临时缓存的最高区块
+     */
+    async getMaxCacheBlock(): Promise<Block | undefined> {
+        let cacheBlockObjectStore = await getCacheBlockObjectStore('MiniBlockChain02');
+        return new Promise((resolve)=> {
+            let request = cacheBlockObjectStore.openCursor(null, 'prev');
+             request.onsuccess = function() {
+                let cursor = request.result!;
+                if (cursor) {
+                    resolve(cursor.value)
+                } else {
+                    resolve(undefined)
+                }
+            }
+        })
+    }
+    
+
+    // async findTranscByHeightV2(height: number, index: number){
+    //     let transactionObjectStore = await getTransactionObjectStore('MiniBlockChain01');
+    //     return new Promise((resolve) => {
+    //         let request= transactionObjectStore.getAll();
+    //         request.onsuccess = () => {
+    //             let trans = request.result.filter(tran=> {
+    //                 if(tran.height === height && tran.index === index) {
+    //                     // this.progress.buffer += 1;
+    //                     return tran;
+    //                 }
+    //             })
+    //             resolve(trans)
+    //         }
+    //     })
+    // }
 
     async findTranscByHeight(height: number){
-        this.transactionObjectStore = await getTransactionObjectStore('MiniBlockChain01');
+        let transactionObjectStore = await getTransactionObjectStore('MiniBlockChain01');
         return new Promise((resolve) => {
-            let request= this.transactionObjectStore.getAll();
-            request.onsuccess = () => {
+            let request= transactionObjectStore.getAll();
+            request.onsuccess = async () => {
+                let cacheTransactionObjectStore = await getCacheTransactionObjectStore('MiniBlockChain02');
                 let trans = request.result.filter(tran=> {
                     if(tran.height === height) {
-                        this.transactionCache.push(tran);
-                        this.progress.buffer += 1;
+                        // 缓存交易
+                        cacheTransactionObjectStore.add(tran);
+                        // this.progress.buffer += 1;
                         return tran;
                     }
                 })
@@ -74,6 +146,43 @@ export class SyncTransactionTask {
             }
         })
     }
+
+    /**
+     * 获取缓存交易的最大高度
+     */
+    async getMaxCacheTransaction(): Promise<TransctionsInBlock | undefined> {
+        let cacheTransactionObjectStore = await getCacheTransactionObjectStore('MiniBlockChain02');
+        return new Promise((resolve)=> {
+            let request = cacheTransactionObjectStore.openCursor(null, 'prev');
+             request.onsuccess = function() {
+                let cursor = request.result!;
+                if (cursor) {
+                    resolve(cursor.value)
+                } else {
+                    resolve(undefined)
+                }
+            }
+        })
+    }
+
+    /**
+     * 获取本地链上最高区块
+     */
+    async getMaxBlock() :Promise<Block | undefined>{
+        let blockObjectStore = await getBlockObjectStore('MiniBlockChain02');
+        return new Promise((resolve) => {
+            let request = blockObjectStore.openCursor(null, 'prev');
+            request.onsuccess = function() {
+                let cursor = request.result!;
+                if (cursor) {
+                    resolve(cursor.value)
+                } else {
+                    resolve(undefined)
+                }
+                
+            }
+        })
+    }
 
     /**中断任务 */
     abort(reason: string) {

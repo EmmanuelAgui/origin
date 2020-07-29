@@ -62,12 +62,12 @@ export class TaskManagerSimple <T> extends EventEmitter{
         // 注册启动重放区块交易事件
         this.on('startReplayTransactions', async (transactions: TransctionsInBlock[], height: number) => {
             let block = await this.syncBlockHeaderTask.findBlockByHeight(height);
-            await this.transactionReplay(transactions, block as Block)
+            // await this.transactionReplay(transactions, block as Block)
         })
 
         // 注册启动重放区块头事件
         this.on('startReplayBlockHeaders', async (block: Block, preBlock: Block) => {
-            await this.blockReplay(block, preBlock)
+            // await this.blockReplay(block, preBlock)
         })
         
         // 中断下载区块头任务
@@ -114,8 +114,8 @@ export class TaskManagerSimple <T> extends EventEmitter{
         //     }
         //     this.emit('startReplayTransactions', res.value, height)
         // } while (true);
-        let transactions = await this.syncTransactionTask.sync(height, numbersOfTransactions);
-        this.emit('startReplayTransactions', transactions, height)
+        // let transactions = await this.syncTransactionTask.sync(height, numbersOfTransactions);
+        // this.emit('startReplayTransactions', transactions, height)
     }
 
     /**
@@ -123,33 +123,33 @@ export class TaskManagerSimple <T> extends EventEmitter{
      * @param transatcions 要验证重放的交易
      * @param block 交易所在区块
      */
-    async transactionReplay(transatcions: TransctionsInBlock[], block: Block) {
-        let replayTransactionRes = await this.replayBlockTransactionTask.replay(transatcions, block);
-        console.log('replay transactions for block:', block)
-        const preBlock = this.getBlockFromCacheByHeight(block.height-1)
-        if (replayTransactionRes) {
-           this.emit('startReplayBlockHeaders', block, preBlock)
-        } else {
-            this.emit('abortSyncBlockHeaders', `高度为${block.height}的区块交易校验失败`);
-        }
-    }
+    // async transactionReplay(transatcions: TransctionsInBlock[], block: Block) {
+    //     let replayTransactionRes = await this.replayBlockTransactionTask.replay(transatcions, block);
+    //     console.log('replay transactions for block:', block)
+    //     const preBlock = this.getBlockFromCacheByHeight(block.height-1)
+    //     if (replayTransactionRes) {
+    //        this.emit('startReplayBlockHeaders', block, preBlock)
+    //     } else {
+    //         this.emit('abortSyncBlockHeaders', `高度为${block.height}的区块交易校验失败`);
+    //     }
+    // }
 
     /**
      * 区块验证重放
      * @param block 要验证重放的区块
      */
-    async blockReplay(block: Block, preBlock: Block) {
+    // async blockReplay(block: Block, preBlock: Block) {
 
-        let replayBlockRes = await this.replayBlockHeaderTask.replay(block, preBlock)
-        console.log('replay block:', block)
-        if (!replayBlockRes) {
-            this.emit('abortSyncBlockHeaders', `高度为${block.height}的区块重放失败`);
-        }
-    }
+    //     let replayBlockRes = await this.replayBlockHeaderTask.replay(block, preBlock)
+    //     console.log('replay block:', block)
+    //     if (!replayBlockRes) {
+    //         this.emit('abortSyncBlockHeaders', `高度为${block.height}的区块重放失败`);
+    //     }
+    // }
 
-    getBlockFromCacheByHeight (height: number) {
-        let index = this.syncBlockHeaderTask.blockCache.findIndex((item) => item.height === height)
-        return this.syncBlockHeaderTask.blockCache[index];
-    }
+    // getBlockFromCacheByHeight (height: number) {
+    //     let index = this.syncBlockHeaderTask.blockCache.findIndex((item) => item.height === height)
+    //     return this.syncBlockHeaderTask.blockCache[index];
+    // }
 }
 

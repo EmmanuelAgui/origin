@@ -13,6 +13,7 @@ interface TaskWrap<T> {
 export class Aborter<T> {
     // waitTasksMap: Map<Symbol, TaskWrap<T>> = new Map();
     waitTaskWeakMap: WeakMap<Promise<unknown>, PromiseOut<T>> = new WeakMap();
+    aborted: boolean = false;
 
     // 为promise封装一层中断器
     wrapAsync(promise: Promise<unknown>) {
@@ -42,6 +43,7 @@ export class Aborter<T> {
 
     // 中断当前执行的任务
     abort(promise:Promise<T>, reason: string){
+        this.aborted = true;
         this.waitTaskWeakMap.get(promise)!.reject(reason)
         // this.waitTaskWeakMap.delete(promise);
     }

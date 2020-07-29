@@ -7,8 +7,10 @@ import { MockData } from './mock_data';
 import { Aborter } from './util/Aborter';
 import { SyncBlockHeaderTask } from './tasks/SyncBlockHeaderTask'
 import { SyncTransactionTask } from './tasks/SyncBlockTransactionTask'
-import { TaskManagerSimple } from './task_manager/TaskManagerSimple'
+// import { TaskManagerSimple } from './task_manager/TaskManagerSimple'
 import { ReplayBlockTransactionTask } from './tasks/ReplayBlockTransctionTask';
+import { ReplayBlockHeaderTask } from './tasks/ReplayBlockHeaderTask';
+import { TaskManagerBasic } from './task_manager/TaskManagerBasic'
 
 // -------------------------生成模拟数据 Start--------------------
 // (async function(){
@@ -69,5 +71,23 @@ import { ReplayBlockTransactionTask } from './tasks/ReplayBlockTransctionTask';
 // taskManagerSimple.start();
 // let replayBlockTransactionTask = new ReplayBlockTransactionTask();
 // replayBlockTransactionTask.replay();
+
+let taskManagerBasic = new TaskManagerBasic();
+
+let syncBlockHeaderTask = new SyncBlockHeaderTask();
+let syncTransactionTask = new SyncTransactionTask();
+let replayBlockTransactionTask = new ReplayBlockTransactionTask();
+let replayBlockHeaderTask = new ReplayBlockHeaderTask();
+
+taskManagerBasic.pushTask(syncBlockHeaderTask, syncBlockHeaderTask.sync());
+taskManagerBasic.pushTask(syncTransactionTask, syncTransactionTask.sync());
+taskManagerBasic.pushTask(replayBlockTransactionTask, replayBlockTransactionTask.replay());
+taskManagerBasic.pushTask(replayBlockHeaderTask, replayBlockHeaderTask.replay());
+
+(async ()=> {
+    for await (let s of taskManagerBasic.run()) {
+
+    }
+})()
 
 

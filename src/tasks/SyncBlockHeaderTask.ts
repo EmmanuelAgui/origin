@@ -1,25 +1,7 @@
 import { Block } from '../interface/block';
-import { ProgressManager } from '../util/ProgressManager';
-import { getBlockObjectStore } from '../util/IndexDBUtil'
+import { getBlockObjectStore, getCacheBlockObjectStore, getMaxCacheBlock } from '../util/IndexDBUtil'
 import { Aborter } from '../util/Aborter'
-import { ResolvePlugin } from 'webpack';
 class SyncBlockHeaderTask {
-    /**
-     * 区块存储空间操作对象
-     */
-    blockObjectStore:IDBObjectStore;
-    /**
-     * 区块缓存池
-     */
-    blockCache: Block[] = [];
-    /**
-     * 进度管理器
-     */
-    progress: ProgressManager;
-    /**
-     * 进度标识
-     */
-    progressSymbol: Symbol = Symbol();
     /**
      * 中断器
      */
@@ -39,18 +21,11 @@ class SyncBlockHeaderTask {
      */
     blockMaxHeight: number = 0;
 
-    constructor(){
-        this.progress = new ProgressManager(this.progressSymbol);
-    }
-
     /**
-     * 使用Aborter进行封装区块下载
-     * @param start 开始区块高度
-     * @param end 结束区块高度
+     * 是否初始化进度
      */
-    // sync(start: number, end: number) {
-    //     return this.aborter.wrapAsyncGenerator(this._sync(start, end));
-    // }
+    inited: boolean = false;
+
 
     /**
      * 区块下载
@@ -60,15 +35,30 @@ class SyncBlockHeaderTask {
     async *sync(){
         // 设置下载的总进度
         do {
-            // 重新获取最大区块高度
+            // 重新获取链上最大区块高度
             this.blockMaxHeight = await this.getBlockMaxHeight();
-            // 保存总进度
-            this.progress.total = this.blockMaxHeight;
+
+            if (!this.inited) {
+                // 获取本地已同步最大的区块
+                let maxblockLocal = await this.getMaxBlockLocal();
+                // 获取缓存的本地区块
+                let maxCacheBlock = await getMaxCacheBlock();
+                // 如果本地有已同步区块
+                if (maxblockLocal) {
+                    if (maxCacheBlock) {
+                        this.curSyncHeight = maxCacheBlock.height + 1;
+                    } else {
+                        this.curSyncHeight = maxblockLocal.height + 1;
+                    }
+                }
+                this.inited =  true;
+            }
+           
             // 如果当前区块高度小于最大区块高度，则继续下载
             if (this.curSyncHeight <= this.blockMaxHeight) {
+                console.log(`开始下载区块高度为${this.curSyncHeight}的区块`)
                 this.curPromise = this.aborter.wrapAsync(this.findBlockByHeight(this.curSyncHeight))
                 this.curSyncHeight ++;
-                this.progress.buffer = this.curSyncHeight;
                 yield this.curPromise;
             }
         } while (true)
@@ -78,25 +68,45 @@ class SyncBlockHeaderTask {
      * 获取最大区块高度
      */
     async getBlockMaxHeight() : Promise<number>{
-        this.blockObjectStore = await getBlockObjectStore('MiniBlockChain01');
+        let blockObjectStore = await getBlockObjectStore('MiniBlockChain01');
         return new Promise((resolve) => {
-            let request = this.blockObjectStore.getAllKeys();
+            let request = blockObjectStore.getAllKeys();
             request.onsuccess = () => {
                 resolve(request.result.length);
             }
         })
     }
 
+     /**
+     * 获取本地已同步最大的区块
+     */
+    async getMaxBlockLocal() :Promise<Block | undefined>{
+        let blockObjectStore = await getBlockObjectStore('MiniBlockChain02');
+        return new Promise((resolve) => {
+            let request = blockObjectStore.openCursor(null, 'prev');
+            request.onsuccess = function() {
+                let cursor = request.result!;
+                if (cursor) {
+                    resolve(cursor.value)
+                } else {
+                    resolve(undefined)
+                }
+            }
+        })
+    }
+
     /**
      * 根据高度查找区块
      * @param height 区块高度
      */
     async findBlockByHeight(height: number){
-        this.blockObjectStore = await getBlockObjectStore('MiniBlockChain01');
+        let blockObjectStore = await getBlockObjectStore('MiniBlockChain01');
         return new Promise((resolve) => {
-            let request= this.blockObjectStore.get(height)
-            request.onsuccess = (event) => {
-                this.blockCache.push(request.result);
+            let request= blockObjectStore.get(height)
+            request.onsuccess = async () => {
+                // this.blockCache.push(request.result);
+                let cacheBlockObjectStore = await getCacheBlockObjectStore('MiniBlockChain02');
+                cacheBlockObjectStore.add(request.result);
                 resolve(request.result)
             }
         })

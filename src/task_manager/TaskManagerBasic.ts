@@ -11,93 +11,56 @@ export class TaskManagerBasic {
   /**
    * 迭代器列表
    */
-  agList: AsyncGenerator[];
+  agList: AsyncGenerator[] = [];
   /**
-   * 正在执行的迭代器列表
+   * 迭代器与其所属实例的映射
    */
-  runningAgList: AsyncGenerator[];
+  agTaskInstanceMap: WeakMap<AsyncGenerator, unknown> = new WeakMap();
+
   /**
    * 迭代器中的待执行的异步任务(promise)列表
    */
-  taskList: (Promise<any> | null)[] = [];
-  constructor(agList: AsyncGenerator[]) {
-    this.agList = agList;
+  taskListMap: WeakMap<AsyncGenerator, Promise<any>> = new WeakMap();
+  // constructor(taskInstance) {
+  //   this.agList = agList;
+  // }
+
+  pushTask(taskInstance: unknown, ag: AsyncGenerator) {
+    this.agTaskInstanceMap.set(ag, taskInstance);
+    this.agList.push(ag)
   }
+
   async *run() {
     do {
       // 轮询迭代器
       if (this.agList.length === 0) return;
+
+      // 遍历轮询迭代器
       for (let i = 0; i < this.agList.length; i++) {
         let ag = this.agList[i];
-        if (this.taskList[i]) {
-          if (this.taskList[i] instanceof Promise) {
-            (this.taskList[i] as Promise<any>).then(({value, done}) => {
-              console.log('value',value,'done', done)
-              console.log('agLenght',this.agList.length)
-              console.log('taskLength',this.taskList.length)
-              if (done) {
-                this.agList.splice(i, 1);
-                this.taskList.splice(i, 1);
-              } else {
-                this.taskList[i] = ag.next();
-              }
-            })
-          } else {
-            this.taskList[i] = ag.next();
-          }
-          // (p as Promise<any>).then(res => {
-            // console.log('res', res);
-            // console.log('value', value);
-            // console.log('done', done);
-            // if (done) {
-            //   p = null;
-            // } else {
-            //   console.log('value', value);
-            //   p = ag.next();
-            // }
-          // }, error => console.log('error', error))
+        if (this.taskListMap.has(ag)) {
+          continue;
+        }
+        let promise = ag.next();
+        this.taskListMap.set(ag, promise);
+        if (promise instanceof Promise) {
+          promise.then(({value, done}) => {
+            console.log('value',value,'done', done)
+            if (done) {
+              this.agList.splice(i, 1);
+            }
+            this.taskListMap.delete(ag);
+          })
         } else {
-          this.taskList[i] = ag.next();
+          console.log('promise', promise)
+          this.taskListMap.set(ag, ag.next());
         }
       }
       yield new Promise((resolve, reject) => {
         setTimeout(() => {
           resolve();
-        }, 1000);
+        }, 10);
       })
-    } while (true)
+    } while (this.agList)
   }
 }
-
-function sleep(timeout: number, data: string) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve(data);
-    }, timeout);
-  });
-}
-
-async function* A() {
-  yield sleep(2000, "A:1");
-  yield sleep(1000, "A:2");
-  yield sleep(2000, "A:3");
-}
-
-async function* B() {
-  yield sleep(100, "B:1");
-  yield sleep(100, "B:2");
-  yield sleep(100, "B:3");
-  yield sleep(100, "B:4");
-}
-
-async function* C() {
-  yield sleep(100, "C:1");
-  yield sleep(100, "C:2");
-}
-
-var s = new TaskManagerBasic([A(), B(), C()]);
-(async function(){
-  for await (let i of s.run()) {
-    console.info(i);
-  }
-})()
