@@ -1,8 +1,8 @@
-import { Block } from '../interface/block';
-import { TransctionsInBlock } from '../interface/transcation_in_block';
-import { ProgressManager } from '../util/ProgressManager';
-import { getTransactionObjectStore, getCacheBlockObjectStore, getCacheTransactionObjectStore,  getBlockObjectStore } from '../util/IndexDBUtil'
-import { Aborter } from '../util/Aborter'
+import { Block } from '../../interface/block';
+import { TransctionsInBlock } from '../../interface/transcation_in_block';
+import { ProgressManager } from '../../util/ProgressManager';
+import { getTransactionObjectStore, getCacheBlockObjectStore, getCacheTransactionObjectStore,  getBlockObjectStore } from '../../util/IndexDBUtil'
+import { Aborter } from '../../util/Aborter'
 export class SyncTransactionTask {
 
     /**

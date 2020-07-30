@@ -18,10 +18,10 @@
 // 每一个任务可以作为一个迭代器，但相互依赖的多个任务可以放进同一个迭代器
 
 import { EventEmitter } from '../util/EventEmitter'
-import { SyncBlockHeaderTask } from '../tasks/SyncBlockHeaderTask';
-import { SyncTransactionTask } from '../tasks/SyncBlockTransactionTask';
-import { ReplayBlockTransactionTask } from '../tasks/ReplayBlockTransctionTask';
-import { ReplayBlockHeaderTask } from '../tasks/ReplayBlockHeaderTask';
+import { SyncBlockHeaderTask } from '../tasks/basic/SyncBlockHeaderTask';
+import { SyncTransactionTask } from '../tasks/basic/SyncBlockTransactionTask';
+import { ReplayBlockTransactionTask } from '../tasks/basic/ReplayBlockTransctionTask';
+import { ReplayBlockHeaderTask } from '../tasks/basic/ReplayBlockHeaderTask';
 import { Block } from '../interface/block';
 import { TransctionsInBlock } from '../interface/transcation_in_block'
 

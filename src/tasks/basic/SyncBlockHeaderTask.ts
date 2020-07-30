@@ -1,6 +1,6 @@
-import { Block } from '../interface/block';
-import { getBlockObjectStore, getCacheBlockObjectStore, getMaxCacheBlock } from '../util/IndexDBUtil'
-import { Aborter } from '../util/Aborter'
+import { Block } from '../../interface/block';
+import { getBlockObjectStore, getCacheBlockObjectStore, getMaxCacheBlock } from '../../util/IndexDBUtil'
+import { Aborter } from '../../util/Aborter'
 class SyncBlockHeaderTask {
     /**
      * 中断器

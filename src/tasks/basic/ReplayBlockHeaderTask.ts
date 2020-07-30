@@ -1,8 +1,8 @@
-import { Block } from '../interface/block';
-import { ProgressManager } from '../util/ProgressManager';
-import { getBlockObjectStore, getCacheBlockObjectStore, getTransactionObjectStore, getMaxCacheBlock } from '../util/IndexDBUtil'
-import { Aborter } from '../util/Aborter'
-import { TransctionsInBlock } from '../interface/transcation_in_block';
+import { Block } from '../../interface/block';
+import { ProgressManager } from '../../util/ProgressManager';
+import { getBlockObjectStore, getCacheBlockObjectStore, getTransactionObjectStore, getMaxCacheBlock } from '../../util/IndexDBUtil'
+import { Aborter } from '../../util/Aborter'
+import { TransctionsInBlock } from '../../interface/transcation_in_block';
 import md5 from 'md5';
 export class ReplayBlockHeaderTask {
     /**

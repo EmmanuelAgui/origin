@@ -5,11 +5,11 @@ document.getElementsByClassName('app')[0].innerHTML = hello;
 
 import { MockData } from './mock_data';
 import { Aborter } from './util/Aborter';
-import { SyncBlockHeaderTask } from './tasks/SyncBlockHeaderTask'
-import { SyncTransactionTask } from './tasks/SyncBlockTransactionTask'
+import { SyncBlockHeaderTask } from './tasks/basic/SyncBlockHeaderTask'
+import { SyncTransactionTask } from './tasks/basic/SyncBlockTransactionTask'
 // import { TaskManagerSimple } from './task_manager/TaskManagerSimple'
-import { ReplayBlockTransactionTask } from './tasks/ReplayBlockTransctionTask';
-import { ReplayBlockHeaderTask } from './tasks/ReplayBlockHeaderTask';
+import { ReplayBlockTransactionTask } from './tasks/basic/ReplayBlockTransctionTask';
+import { ReplayBlockHeaderTask } from './tasks/basic/ReplayBlockHeaderTask';
 import { TaskManagerBasic } from './task_manager/TaskManagerBasic'
 
 // -------------------------生成模拟数据 Start--------------------
