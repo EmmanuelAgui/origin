@@ -5,8 +5,6 @@
  * 等待有数据可以处理的时候，再加入到执行队列。
  */
 
-import { EventEmitter } from '../util/EventEmitter';
-
 export class TaskManagerBasic {
   /**
    * 迭代器列表
@@ -59,8 +57,43 @@ export class TaskManagerBasic {
       yield new Promise((resolve, reject) => {
         setTimeout(() => {
           resolve();
-        }, 10);
+        }, 1);
       })
     } while (this.agList)
   }
 }
+function sleep(timeout: number, data: string) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve(data);
+    }, timeout);
+  });
+}
+
+async function* A() {
+  yield sleep(10000, "A:1");
+  yield sleep(100, "A:2");
+  yield sleep(1000, "A:3");
+}
+
+async function* B() {
+  yield sleep(10000, "B:1");
+  yield sleep(100, "B:2");
+}
+
+async function* C() {
+  yield sleep(100, "C:1");
+  yield sleep(100, "C:2");
+}
+
+var s = new TaskManagerBasic();
+s.pushTask(null, A())
+s.pushTask(null, B())
+s.pushTask(null, C())
+async function taskRun() {
+  for await (let i of s.run()) {
+    // console.info(i);
+  }
+}
+
+taskRun();

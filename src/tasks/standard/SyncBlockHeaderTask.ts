@@ -63,6 +63,7 @@ class SyncBlockHeaderTask {
         } while (true)
     }
 
+
     /**中断任务 */
     abort(reason: string) {
         this.aborter.abort(this.curPromise, reason);

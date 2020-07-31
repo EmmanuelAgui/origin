@@ -140,3 +140,70 @@ export async function getMaxCacheBlock() :Promise<Block | undefined>{
         }
     })
 }
+
+
+/**
+ * 获取本地已同步的最大区块
+ */
+export async function getMaxBlockLocal() :Promise<Block | undefined>{
+    let blockObjectStore = await getBlockObjectStore('MiniBlockChain02');
+    return new Promise((resolve) => {
+        let request = blockObjectStore.openCursor(null, 'prev');
+        request.onsuccess = function() {
+            let cursor = request.result!;
+            if (cursor) {
+                resolve(cursor.value)
+            } else {
+                resolve(undefined)
+            }
+        }
+    })
+}
+
+ /**
+  * 获取链上最大区块高度
+  */
+export async function getBlockMaxHeight() : Promise<number>{
+    let blockObjectStore = await getBlockObjectStore('MiniBlockChain01');
+    return new Promise((resolve) => {
+        let request = blockObjectStore.getAllKeys();
+        request.onsuccess = () => {
+            resolve(request.result.length);
+        }
+    })
+}
+
+/**
+ * 根据高度查找链上区块
+ * @param height 区块高度
+ */
+export async function findBlockByHeight(height: number){
+    let blockObjectStore = await getBlockObjectStore('MiniBlockChain01');
+    return new Promise((resolve) => {
+        let request= blockObjectStore.get(height)
+        request.onsuccess = async () => {
+            // this.blockCache.push(request.result);
+            let cacheBlockObjectStore = await getCacheBlockObjectStore('MiniBlockChain02');
+            cacheBlockObjectStore.add(request.result);
+            resolve(request.result)
+        }
+    })
+}
+
+/**
+ * 获取缓存交易的最新交易
+ */
+export async function getMaxCacheTransaction(): Promise<TransctionsInBlock | undefined> {
+    let cacheTransactionObjectStore = await getCacheTransactionObjectStore('MiniBlockChain02');
+    return new Promise((resolve)=> {
+        let request = cacheTransactionObjectStore.openCursor(null, 'prev');
+         request.onsuccess = function() {
+                let cursor = request.result!;
+            if (cursor) {
+                    resolve(cursor.value)
+            } else {
+                resolve(undefined)
+            }
+        }
+    })
+}

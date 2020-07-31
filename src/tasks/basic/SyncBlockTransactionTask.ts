@@ -1,7 +1,5 @@
 import { Block } from '../../interface/block';
-import { TransctionsInBlock } from '../../interface/transcation_in_block';
-import { ProgressManager } from '../../util/ProgressManager';
-import { getTransactionObjectStore, getCacheBlockObjectStore, getCacheTransactionObjectStore,  getBlockObjectStore } from '../../util/IndexDBUtil'
+import { getTransactionObjectStore, getCacheBlockObjectStore, getCacheTransactionObjectStore, getMaxCacheBlock, getMaxCacheTransaction, getMaxBlockLocal } from '../../util/IndexDBUtil'
 import { Aborter } from '../../util/Aborter'
 export class SyncTransactionTask {
 
@@ -36,11 +34,11 @@ export class SyncTransactionTask {
             // 1. 首先看已同步的区块的高度， 已同步的区块高度以下就不用下载了
             // 2. 看本地已经下载的交易的高度，如果高于已同步的区块高度，再看已经下载的区块的高度，如果小于已经下载的区块的高度，继续下载，如果相等，等待
             // 本地链上最高区块
-            let localMaxBlock = await this.getMaxBlock();
+            let localMaxBlock = await getMaxBlockLocal();
             // 本地缓存最大交易
-            let cacheMaxTransaction = await this.getMaxCacheTransaction();
+            let cacheMaxTransaction = await getMaxCacheTransaction();
             // 本地缓存最大区块
-            let cacheMaxBlock = await this.getMaxCacheBlock();
+            let cacheMaxBlock = await getMaxCacheBlock();
             if (!this.inited) {
                 if (localMaxBlock) { // 本地链上存在区块
                     if (cacheMaxTransaction) { // 本地已有缓存交易
@@ -91,26 +89,7 @@ export class SyncTransactionTask {
                 resolve(request.result);
             }
         })
-    }
-
-    /**
-     * 获取临时缓存的最高区块
-     */
-    async getMaxCacheBlock(): Promise<Block | undefined> {
-        let cacheBlockObjectStore = await getCacheBlockObjectStore('MiniBlockChain02');
-        return new Promise((resolve)=> {
-            let request = cacheBlockObjectStore.openCursor(null, 'prev');
-             request.onsuccess = function() {
-                let cursor = request.result!;
-                if (cursor) {
-                    resolve(cursor.value)
-                } else {
-                    resolve(undefined)
-                }
-            }
-        })
-    }
-    
+    }    
 
     // async findTranscByHeightV2(height: number, index: number){
     //     let transactionObjectStore = await getTransactionObjectStore('MiniBlockChain01');
@@ -146,43 +125,6 @@ export class SyncTransactionTask {
             }
         })
     }
-
-    /**
-     * 获取缓存交易的最大高度
-     */
-    async getMaxCacheTransaction(): Promise<TransctionsInBlock | undefined> {
-        let cacheTransactionObjectStore = await getCacheTransactionObjectStore('MiniBlockChain02');
-        return new Promise((resolve)=> {
-            let request = cacheTransactionObjectStore.openCursor(null, 'prev');
-             request.onsuccess = function() {
-                let cursor = request.result!;
-                if (cursor) {
-                    resolve(cursor.value)
-                } else {
-                    resolve(undefined)
-                }
-            }
-        })
-    }
-
-    /**
-     * 获取本地链上最高区块
-     */
-    async getMaxBlock() :Promise<Block | undefined>{
-        let blockObjectStore = await getBlockObjectStore('MiniBlockChain02');
-        return new Promise((resolve) => {
-            let request = blockObjectStore.openCursor(null, 'prev');
-            request.onsuccess = function() {
-                let cursor = request.result!;
-                if (cursor) {
-                    resolve(cursor.value)
-                } else {
-                    resolve(undefined)
-                }
-                
-            }
-        })
-    }
 
     /**中断任务 */
     abort(reason: string) {
